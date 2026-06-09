@@ -9,13 +9,21 @@ void main() async {
   // Flutter binding ensure karna zaroori hai
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase initialize (Ab google-services.json se automatically load hoga)
-  await Firebase.initializeApp();
+  // Try-catch block lagaya hai taaki Firebase error se app crash na ho
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint("Firebase initialization error: $e");
+  }
 
   // Mobile Ads initialize
   if (!kIsWeb) {
-    await MobileAds.instance.initialize();
-    AdHelper.loadRewardedAd();
+    try {
+      await MobileAds.instance.initialize();
+      AdHelper.loadRewardedAd();
+    } catch (e) {
+      debugPrint("Ads initialization error: $e");
+    }
   }
 
   runApp(const MaterialApp(home: HomeScreen(), debugShowCheckedModeBanner: false));
@@ -68,12 +76,17 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _dbRef = FirebaseDatabase.instance.ref("user_balance");
-    _dbRef.onValue.listen((event) {
-      if (event.snapshot.value != null) {
-        setState(() => balance = int.tryParse(event.snapshot.value.toString()) ?? 0);
-      }
-    });
+    // Firebase database connection
+    try {
+      _dbRef = FirebaseDatabase.instance.ref("user_balance");
+      _dbRef.onValue.listen((event) {
+        if (event.snapshot.value != null) {
+          setState(() => balance = int.tryParse(event.snapshot.value.toString()) ?? 0);
+        }
+      });
+    } catch (e) {
+      debugPrint("Database connection error: $e");
+    }
   }
 
   @override
@@ -94,58 +107,4 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMenu(IconData icon, String title, VoidCallback onTap) {
-    return Card(margin: const EdgeInsets.all(10), child: ListTile(leading: Icon(icon), title: Text(title), onTap: onTap));
-  }
-
-  void _openTaskList(String type) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => TaskListScreen(type: type)));
-  }
-}
-
-class TaskListScreen extends StatelessWidget {
-  final String type;
-  const TaskListScreen({super.key, required this.type});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("${type.toUpperCase()} Tasks"), backgroundColor: Colors.green),
-      body: StreamBuilder(
-        stream: FirebaseDatabase.instance.ref("tasks/$type").onValue,
-        builder: (context, AsyncSnapshot<DatabaseEvent> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          if (!snapshot.hasData || snapshot.data!.snapshot.value == null) return const Center(child: Text("Koi task nahi hai"));
-
-          final data = snapshot.data!.snapshot.value;
-          List<dynamic> list = data is Map ? data.values.toList() : (data as List);
-
-          return ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (context, i) {
-              final item = list[i] as Map<dynamic, dynamic>;
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                child: ListTile(
-                  leading: const Icon(Icons.play_circle_fill, color: Colors.green, size: 40),
-                  title: Text(item['title'] ?? 'No Title'),
-                  trailing: ElevatedButton(
-                    onPressed: () {
-                      AdHelper.showRewardedAd(() async {
-                        final url = item['link'];
-                        if (url != null) {
-                          final Uri uri = Uri.parse(url);
-                          if (await canLaunchUrl(uri)) await launchUrl(uri);
-                        }
-                      });
-                    },
-                    child: const Text("Watch Ad"),
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
+    return Card(margin: const EdgeInsets.all(10), child: ListTile
