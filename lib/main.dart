@@ -7,6 +7,8 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Try-catch block taaki Firebase fail hone par app crash na ho
   try {
     await Firebase.initializeApp();
   } catch (e) {
@@ -14,8 +16,13 @@ void main() async {
   }
 
   if (!kIsWeb) {
-    await MobileAds.instance.initialize();
+    try {
+      await MobileAds.instance.initialize();
+    } catch (e) {
+      debugPrint("Ads skip: $e");
+    }
   }
+  
   runApp(const MaterialApp(home: HomeScreen(), debugShowCheckedModeBanner: false));
 }
 

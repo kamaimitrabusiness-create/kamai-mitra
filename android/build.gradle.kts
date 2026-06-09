@@ -1,10 +1,9 @@
 // Android Root build.gradle.kts
 plugins {
-    // Server ke version ke saath match karne ke liye versions update kar diye hain
     id("com.android.application") apply false
     id("com.android.library") apply false
     id("org.jetbrains.kotlin.android") version "2.3.20" apply false
-    id("com.google.gms.google-services") version "4.4.1" apply false
+    // id("com.google.gms.google-services") version "4.4.1" apply false  <-- Ye line yahan se hat gayi hai
 }
 
 allprojects {
