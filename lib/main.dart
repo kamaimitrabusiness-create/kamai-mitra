@@ -1,19 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Try-catch block taaki Firebase fail hone par app crash na ho
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    debugPrint("Firebase skip: $e");
-  }
 
   if (!kIsWeb) {
     try {
@@ -33,25 +24,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // Firebase hat gaya hai, yahan static balance dikhayenge
   int balance = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    try {
-      FirebaseDatabase.instance.ref("user_balance").onValue.listen((event) {
-        if (mounted && event.snapshot.value != null) {
-          setState(() => balance = int.tryParse(event.snapshot.value.toString()) ?? 0);
-        }
-      });
-    } catch (e) {
-      debugPrint("DB error: $e");
-    }
-  }
-
-  void _openTaskList(String type) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => TaskListScreen(type: type)));
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +50,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ListTile(leading: Icon(icon), title: Text(title), onTap: onTap)
     );
   }
+
+  void _openTaskList(String type) {
+    // Abhi ke liye ye screen khulegi, par database load nahi hoga
+    Navigator.push(context, MaterialPageRoute(builder: (context) => TaskListScreen(type: type)));
+  }
 }
 
 class TaskListScreen extends StatelessWidget {
@@ -86,40 +65,7 @@ class TaskListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("${type.toUpperCase()} Tasks"), backgroundColor: Colors.green),
-      body: StreamBuilder(
-        stream: FirebaseDatabase.instance.ref("tasks/$type").onValue,
-        builder: (context, AsyncSnapshot<DatabaseEvent> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          if (!snapshot.hasData || snapshot.data!.snapshot.value == null) return const Center(child: Text("Koi task nahi hai"));
-
-          final data = snapshot.data!.snapshot.value;
-          List<dynamic> list = data is Map ? data.values.toList() : (data as List);
-
-          return ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (context, i) {
-              final item = list[i] as Map<dynamic, dynamic>;
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                child: ListTile(
-                  leading: const Icon(Icons.play_circle_fill, color: Colors.green, size: 40),
-                  title: Text(item['title'] ?? 'No Title'),
-                  trailing: ElevatedButton(
-                    onPressed: () async {
-                      final url = item['link'];
-                      if (url != null) {
-                        final Uri uri = Uri.parse(url);
-                        if (await canLaunchUrl(uri)) await launchUrl(uri);
-                      }
-                    },
-                    child: const Text("Open"),
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
+      body: const Center(child: Text("Firebase connection remove kar diya hai, ab app crash nahi hogi!")),
     );
   }
 }
