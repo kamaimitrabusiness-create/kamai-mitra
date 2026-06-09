@@ -6,61 +6,17 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() async {
-  // Flutter binding ensure karna zaroori hai
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Try-catch block lagaya hai taaki Firebase error se app crash na ho
   try {
     await Firebase.initializeApp();
   } catch (e) {
-    debugPrint("Firebase initialization error: $e");
+    debugPrint("Firebase skip: $e");
   }
 
-  // Mobile Ads initialize
   if (!kIsWeb) {
-    try {
-      await MobileAds.instance.initialize();
-      AdHelper.loadRewardedAd();
-    } catch (e) {
-      debugPrint("Ads initialization error: $e");
-    }
+    await MobileAds.instance.initialize();
   }
-
   runApp(const MaterialApp(home: HomeScreen(), debugShowCheckedModeBanner: false));
-}
-
-class AdHelper {
-  static RewardedAd? _rewardedAd;
-
-  static void loadRewardedAd() {
-    RewardedAd.load(
-      adUnitId: 'ca-app-pub-3940256099942544/5224354917',
-      request: const AdRequest(),
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (ad) => _rewardedAd = ad,
-        onAdFailedToLoad: (err) => _rewardedAd = null,
-      ),
-    );
-  }
-
-  static void showRewardedAd(VoidCallback onRewardEarned) {
-    if (kIsWeb) {
-      onRewardEarned();
-      return;
-    }
-    if (_rewardedAd != null) {
-      _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
-        onAdDismissedFullScreenContent: (ad) {
-          ad.dispose();
-          loadRewardedAd();
-        },
-      );
-      _rewardedAd!.show(onUserEarnedReward: (ad, reward) => onRewardEarned());
-    } else {
-      onRewardEarned();
-      loadRewardedAd();
-    }
-  }
 }
 
 class HomeScreen extends StatefulWidget {
@@ -70,23 +26,24 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late DatabaseReference _dbRef;
   int balance = 0;
 
   @override
   void initState() {
     super.initState();
-    // Firebase database connection
     try {
-      _dbRef = FirebaseDatabase.instance.ref("user_balance");
-      _dbRef.onValue.listen((event) {
-        if (event.snapshot.value != null) {
+      FirebaseDatabase.instance.ref("user_balance").onValue.listen((event) {
+        if (mounted && event.snapshot.value != null) {
           setState(() => balance = int.tryParse(event.snapshot.value.toString()) ?? 0);
         }
       });
     } catch (e) {
-      debugPrint("Database connection error: $e");
+      debugPrint("DB error: $e");
     }
+  }
+
+  void _openTaskList(String type) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => TaskListScreen(type: type)));
   }
 
   @override
@@ -107,4 +64,55 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMenu(IconData icon, String title, VoidCallback onTap) {
-    return Card(margin: const EdgeInsets.all(10), child: ListTile
+    return Card(
+      margin: const EdgeInsets.all(10), 
+      child: ListTile(leading: Icon(icon), title: Text(title), onTap: onTap)
+    );
+  }
+}
+
+class TaskListScreen extends StatelessWidget {
+  final String type;
+  const TaskListScreen({super.key, required this.type});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("${type.toUpperCase()} Tasks"), backgroundColor: Colors.green),
+      body: StreamBuilder(
+        stream: FirebaseDatabase.instance.ref("tasks/$type").onValue,
+        builder: (context, AsyncSnapshot<DatabaseEvent> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData || snapshot.data!.snapshot.value == null) return const Center(child: Text("Koi task nahi hai"));
+
+          final data = snapshot.data!.snapshot.value;
+          List<dynamic> list = data is Map ? data.values.toList() : (data as List);
+
+          return ListView.builder(
+            itemCount: list.length,
+            itemBuilder: (context, i) {
+              final item = list[i] as Map<dynamic, dynamic>;
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                child: ListTile(
+                  leading: const Icon(Icons.play_circle_fill, color: Colors.green, size: 40),
+                  title: Text(item['title'] ?? 'No Title'),
+                  trailing: ElevatedButton(
+                    onPressed: () async {
+                      final url = item['link'];
+                      if (url != null) {
+                        final Uri uri = Uri.parse(url);
+                        if (await canLaunchUrl(uri)) await launchUrl(uri);
+                      }
+                    },
+                    child: const Text("Open"),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
