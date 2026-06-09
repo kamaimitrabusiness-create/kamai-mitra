@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.kamai_mitra"
+    namespace = "com.kamai.mitra" // Yahan update kar diya
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -15,7 +15,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.kamai_mitra"
+        applicationId = "com.kamai.mitra" // Yahan update kar diya
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
