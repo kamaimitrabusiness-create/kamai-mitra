@@ -1,7 +1,8 @@
 plugins {
     id("com.android.application")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    // Agar aap Firebase use karna chahte hain toh ye line un-comment kijiye:
+    // id("com.google.gms.google-services") 
 }
 
 android {
