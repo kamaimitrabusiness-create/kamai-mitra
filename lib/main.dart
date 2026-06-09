@@ -6,30 +6,17 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() async {
+  // Flutter binding ensure karna zaroori hai
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Firebase initialize (Ab google-services.json se automatically load hoga)
+  await Firebase.initializeApp();
+
+  // Mobile Ads initialize
   if (!kIsWeb) {
     await MobileAds.instance.initialize();
+    AdHelper.loadRewardedAd();
   }
-
-  // Firebase initialization ko try-catch mein rakha hai taaki crash na ho
-  try {
-    await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: "AIzaSyDfc9qqDr_C6BW6rm8LCscof9nvy5X0sUM",
-        authDomain: "kamai-mitra.firebaseapp.com",
-        databaseURL: "https://kamai-mitra-default-rtdb.firebaseio.com",
-        projectId: "kamai-mitra",
-        storageBucket: "kamai-mitra.firebasestorage.app",
-        messagingSenderId: "468801020264",
-        appId: "1:468801020264:web:96e358c2bdfdba95f2f6dd",
-      ),
-    );
-  } catch (e) {
-    debugPrint("Firebase init error: $e");
-  }
-
-  if (!kIsWeb) AdHelper.loadRewardedAd();
 
   runApp(const MaterialApp(home: HomeScreen(), debugShowCheckedModeBanner: false));
 }
@@ -75,24 +62,18 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Agar firebase initialize nahi hua toh ye ref null de sakta hai, 
-  // isliye hum safe check use karenge
   late DatabaseReference _dbRef;
   int balance = 0;
 
   @override
   void initState() {
     super.initState();
-    try {
-      _dbRef = FirebaseDatabase.instance.ref("user_balance");
-      _dbRef.onValue.listen((event) {
-        if (event.snapshot.value != null) {
-          setState(() => balance = int.tryParse(event.snapshot.value.toString()) ?? 0);
-        }
-      });
-    } catch (e) {
-      debugPrint("Database error: $e");
-    }
+    _dbRef = FirebaseDatabase.instance.ref("user_balance");
+    _dbRef.onValue.listen((event) {
+      if (event.snapshot.value != null) {
+        setState(() => balance = int.tryParse(event.snapshot.value.toString()) ?? 0);
+      }
+    });
   }
 
   @override
